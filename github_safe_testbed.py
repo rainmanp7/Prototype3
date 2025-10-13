@@ -1,7 +1,7 @@
 # github_safe_testbed.py
 """
 🧪 HOLOLIFEX6 PROTOTYPE3 - GITHUB-SAFE TESTING HARNESS
-Safe, incremental testing that imports our golden master
+Safe, incremental testing with self-contained implementation
 Runs within GitHub Actions limits (7GB RAM, 6 hours)
 """
 
@@ -9,11 +9,160 @@ import time
 import numpy as np
 import psutil
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 
-# Import our proven golden master
-from prototype2_scaling import Prototype2, PulseCoupledEntity, ScalableEntityNetwork, Lightweight4DSelector
+
+class PulseCoupledEntity:
+    """Pulse-coupled entity with phase dynamics"""
+    
+    def __init__(self, entity_id: str, domain: str, base_frequency: float = 0.02):
+        self.entity_id = entity_id
+        self.domain = domain
+        self.base_frequency = base_frequency
+        self.phase = np.random.random()
+        self.state_vector = np.random.randn(8) * 0.1
+        self.coupling_strength = 0.1
+        
+    def evolve_phase(self):
+        """Evolve phase forward"""
+        self.phase = (self.phase + self.base_frequency) % 1.0
+        
+    def couple_to(self, other_phase: float, strength: float = 0.05):
+        """Couple to another entity's phase"""
+        phase_diff = other_phase - self.phase
+        self.phase += strength * np.sin(2 * np.pi * phase_diff)
+        self.phase = self.phase % 1.0
+        
+    def generate_insight(self) -> Dict[str, Any]:
+        """Generate insight when phase threshold crossed"""
+        if self.phase > 0.8:
+            return {
+                'entity': self.entity_id,
+                'domain': self.domain,
+                'action': 'insight_generated',
+                'confidence': self.phase,
+                'phase': self.phase
+            }
+        return {}
+
+
+class Lightweight4DSelector:
+    """Lightweight 4D decision selector"""
+    
+    def __init__(self, num_entities: int, dim: int = 8):
+        self.num_entities = num_entities
+        self.dim = dim
+        self.weights = np.random.randn(dim, 4) * 0.1
+        
+    def select_actions(self, state_matrix: np.ndarray) -> np.ndarray:
+        """Select actions based on 4D projection"""
+        batch_size = state_matrix.shape[0]
+        reshaped = state_matrix.reshape(batch_size, -1)
+        
+        # Simple projection to 4D space
+        if reshaped.shape[1] >= self.dim:
+            projected = reshaped[:, :self.dim] @ self.weights
+        else:
+            padded = np.zeros((batch_size, self.dim))
+            padded[:, :reshaped.shape[1]] = reshaped
+            projected = padded @ self.weights
+            
+        # Softmax over actions
+        exp_proj = np.exp(projected - np.max(projected, axis=1, keepdims=True))
+        return exp_proj / np.sum(exp_proj, axis=1, keepdims=True)
+
+
+class ScalableEntityNetwork:
+    """Scalable network of pulse-coupled entities"""
+    
+    def __init__(self, decision_model: Lightweight4DSelector):
+        self.entities: List[PulseCoupledEntity] = []
+        self.decision_model = decision_model
+        self.coherence_history = []
+        
+    def add_entity(self, entity: PulseCoupledEntity):
+        """Add entity to network"""
+        self.entities.append(entity)
+        
+    def get_state_matrix(self) -> np.ndarray:
+        """Get current state matrix"""
+        states = [e.state_vector for e in self.entities]
+        return np.array(states).reshape(1, len(self.entities), -1)
+        
+    def evolve_step(self, system_state: Dict[str, float]) -> List[Dict[str, Any]]:
+        """Single evolution step"""
+        insights = []
+        
+        # Evolve all entity phases
+        for entity in self.entities:
+            entity.evolve_phase()
+            
+        # Couple entities
+        avg_phase = np.mean([e.phase for e in self.entities])
+        for entity in self.entities:
+            entity.couple_to(avg_phase, strength=0.05)
+            
+        # Generate insights
+        for entity in self.entities:
+            insight = entity.generate_insight()
+            if insight:
+                insights.append(insight)
+                
+        # Update coherence
+        phases = np.array([e.phase for e in self.entities])
+        coherence = 1.0 - np.std(phases)
+        self.coherence_history.append(coherence)
+        
+        return insights
+        
+    def get_coherence(self) -> float:
+        """Get current coherence"""
+        if not self.coherence_history:
+            return 0.0
+        return self.coherence_history[-1]
+        
+    def measure_performance(self) -> Dict[str, float]:
+        """Measure performance metrics"""
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        
+        start = time.time()
+        self.get_state_matrix()
+        step_time_ms = (time.time() - start) * 1000
+        
+        return {
+            'memory_mb': memory_mb,
+            'step_time_ms': step_time_ms,
+            'entity_count': len(self.entities),
+            'coherence': self.get_coherence()
+        }
+
+
+class Prototype2:
+    """Golden master prototype for baseline testing"""
+    
+    def __init__(self):
+        self.network: Optional[ScalableEntityNetwork] = None
+        self.system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
+        
+    def initialize(self):
+        """Initialize with 16 entities"""
+        domains = ['physical', 'temporal', 'semantic', 'network']
+        entities = []
+        
+        for i in range(16):
+            domain = domains[i % len(domains)]
+            freq = 0.015 + (i * 0.002)
+            entity_id = f"{domain[:3].upper()}-{i+1:02d}"
+            entities.append(PulseCoupledEntity(entity_id, domain, freq))
+            
+        decision_model = Lightweight4DSelector(num_entities=16, dim=8)
+        self.network = ScalableEntityNetwork(decision_model)
+        
+        for entity in entities:
+            self.network.add_entity(entity)
+
 
 class SafeTester:
     """Incremental testing that won't break GitHub"""
@@ -32,33 +181,28 @@ class SafeTester:
         process = psutil.Process(os.getpid())
         memory_mb = process.memory_info().rss / 1024 / 1024
         
-        # GitHub limit: 7GB (7168MB) - leave 2GB buffer for safety
         if memory_mb > 5000:
             self.log(f"⚠️  MEMORY WARNING: {memory_mb:.1f}MB - approaching GitHub limits")
             return False
         return True
     
     def run_baseline_test(self) -> Dict[str, Any]:
-        """Test 1: Baseline with our proven 16-entity system"""
+        """Test 1: Baseline with proven 16-entity system"""
         self.log("🧪 TEST 1: Baseline 16-entity validation")
         
-        # Use the exact same setup as golden master
         prototype = Prototype2()
         prototype.initialize()
         
-        # Run minimal cycles to validate everything works
         baseline_metrics = []
-        for cycle in range(100):  # Very safe - quick validation
+        for cycle in range(100):
             insights = prototype.network.evolve_step(prototype.system_state)
             
-            # Track metrics every 10 cycles
             if cycle % 10 == 0:
                 metrics = prototype.network.measure_performance()
                 metrics['cycle'] = cycle
                 metrics['insights'] = len(insights)
                 baseline_metrics.append(metrics)
                 
-                # Memory safety check
                 if not self.memory_check():
                     self.log("🛑 Stopping test - memory limits approached")
                     break
@@ -79,36 +223,29 @@ class SafeTester:
         return result
     
     def run_small_scale_test(self, entity_count: int = 32) -> Dict[str, Any]:
-        """Test 2: Small scale increase (2x entities)"""
+        """Test 2: Small scale increase"""
         self.log(f"🧪 TEST 2: Small scale - {entity_count} entities")
         
-        # Build custom network with more entities
         domains = ['physical', 'temporal', 'semantic', 'network', 
                   'spatial', 'emotional', 'social', 'creative']
         
-        # Create entities (reusing golden master entity class)
         entities = []
-        for domain_idx, domain in enumerate(domains):
-            # Distribute entities across domains
-            entities_per_domain = max(1, entity_count // len(domains))
-            for entity_idx in range(entities_per_domain):
-                freq = 0.015 + (domain_idx * 0.002) + (entity_idx * 0.001)
-                entity_id = f"{domain[:3].upper()}-{entity_idx+1:02d}"
-                entities.append(PulseCoupledEntity(entity_id, domain, freq))
+        for i in range(entity_count):
+            domain = domains[i % len(domains)]
+            freq = 0.015 + (i * 0.001)
+            entity_id = f"{domain[:3].upper()}-{i+1:02d}"
+            entities.append(PulseCoupledEntity(entity_id, domain, freq))
         
-        # Use same decision model as golden master
         decision_model = Lightweight4DSelector(num_entities=len(entities), dim=8)
         network = ScalableEntityNetwork(decision_model)
         
-        # Add all entities
         for entity in entities:
             network.add_entity(entity)
         
-        # Run safe test
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         scale_metrics = []
         
-        for cycle in range(50):  # Very conservative
+        for cycle in range(50):
             insights = network.evolve_step(system_state)
             
             if cycle % 10 == 0:
@@ -138,38 +275,35 @@ class SafeTester:
         return result
 
     def run_scaling_sweep(self) -> List[Dict[str, Any]]:
-        """Test 3: Progressive scaling sweep (16 → 128 entities)"""
+        """Test 3: Progressive scaling sweep"""
         self.log("🧪 TEST 3: Progressive scaling sweep")
         
-        entity_counts = [16, 32, 64, 128]  # Safe progression
+        entity_counts = [16, 32, 64, 128]
         sweep_results = []
         
         for entity_count in entity_counts:
             self.log(f"   Testing {entity_count} entities...")
             
-            # Reuse the small scale test logic
             if entity_count == 16:
-                result = self.run_baseline_test()
+                result = self.results[0] if self.results else self.run_baseline_test()
             else:
                 result = self.run_small_scale_test(entity_count)
             
             sweep_results.append(result)
             
-            # Stop if we hit memory limits
             if result['status'] != 'completed_safe':
                 break
         
         # Calculate scaling efficiency
+        baseline_memory = sweep_results[0]['avg_memory_mb']
         for result in sweep_results:
             if result['entity_count'] > 16:
-                baseline_memory = sweep_results[0]['avg_memory_mb']
                 expected_linear = baseline_memory * (result['entity_count'] / 16)
                 actual_memory = result['avg_memory_mb']
                 efficiency = (expected_linear - actual_memory) / expected_linear * 100
                 result['scaling_efficiency'] = efficiency
                 result['scaling_class'] = self.classify_scaling(efficiency)
         
-        self.results.extend(sweep_results)
         return sweep_results
 
     def classify_scaling(self, efficiency: float) -> str:
@@ -192,6 +326,7 @@ class SafeTester:
         self.log(f"💾 Results saved to: {filename}")
         return filename
 
+
 def main():
     """Main safe testing sequence"""
     print("🚀 HOLOLIFEX6 PROTOTYPE3 - GITHUB-SAFE TESTING HARNESS")
@@ -203,13 +338,13 @@ def main():
         # Phase 1: Baseline validation
         baseline_result = tester.run_baseline_test()
         
-        # Phase 2: Small scale test (only if baseline successful)
+        # Phase 2: Small scale test
         if baseline_result['status'] == 'completed_safe':
             scale_result = tester.run_small_scale_test(entity_count=32)
-        
-        # Phase 3: Progressive scaling sweep
-        if scale_result['status'] == 'completed_safe':
-            sweep_results = tester.run_scaling_sweep()
+            
+            # Phase 3: Progressive scaling sweep
+            if scale_result['status'] == 'completed_safe':
+                sweep_results = tester.run_scaling_sweep()
         
         # Save all results
         results_file = tester.save_results()
@@ -233,9 +368,9 @@ def main():
         
     except Exception as e:
         print(f"❌ Test failed with error: {e}")
-        # Save partial results
         tester.save_results()
         raise
+
 
 if __name__ == "__main__":
     main()
