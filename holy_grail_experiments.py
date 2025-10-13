@@ -3,7 +3,7 @@
 🌌 HOLOLIFEX6 PROTOTYPE3 - HOLY GRAIL SCALING EXPERIMENTS
 Testing constant-time, negative scaling, and quantum emergence
 WARNING: These are experimental and may exceed GitHub limits
-FIXED: Critical bugs in QuantumEntity and HolographicNetwork
+FIXED: Zero metrics and critical bugs in QuantumEntity and HolographicNetwork
 """
 
 import time
@@ -125,36 +125,49 @@ class ScalableEntityNetwork:
         return self.coherence_history[-1] if self.coherence_history else 0.0
     
     def get_intelligence_metrics(self) -> Dict[str, float]:
-        """Enhanced intelligence metrics for holy grail experiments"""
+        """Enhanced intelligence metrics - FIXED to prevent zeros"""
         if not self.insight_history:
             return {
-                'avg_complexity': 0,
-                'insight_rate': 0,
-                'domain_variety': 0,
-                'learning_trend': 0
+                'avg_complexity': 0.0,
+                'insight_rate': 0.0,
+                'domain_variety': 0.0,
+                'learning_trend': 0.0
             }
         
-        recent_insights = self.insight_history[-30:]
+        # Use ALL insights, not just recent 30
+        all_insights = self.insight_history
+        recent_insights = all_insights[-min(30, len(all_insights)):]
         
-        avg_complexity = np.mean([insight.get('complexity', 1) for insight in recent_insights])
+        # Calculate average complexity
+        complexities = [insight.get('complexity', 1) for insight in recent_insights]
+        avg_complexity = np.mean(complexities) if complexities else 0.0
         
-        insight_rate = len(recent_insights) / 30.0
+        # Calculate insight rate (insights per cycle)
+        # Total insights divided by number of cycles (coherence history length)
+        cycles = len(self.coherence_history) if self.coherence_history else 1
+        insight_rate = len(all_insights) / max(1, cycles)
         
-        unique_domains = len(set(insight.get('domain', '') for insight in recent_insights))
-        domain_variety = unique_domains / len(recent_insights) if recent_insights else 0
+        # Calculate domain variety
+        domains = [insight.get('domain', '') for insight in recent_insights]
+        unique_domains = len(set(d for d in domains if d))
+        domain_variety = unique_domains / len(recent_insights) if recent_insights else 0.0
         
-        if len(recent_insights) > 10:
-            early_complexity = np.mean([insight.get('complexity', 1) for insight in recent_insights[:5]])
-            late_complexity = np.mean([insight.get('complexity', 1) for insight in recent_insights[-5:]])
+        # Calculate learning trend (complexity improvement over time)
+        if len(all_insights) >= 10:
+            early_insights = all_insights[:min(10, len(all_insights)//2)]
+            late_insights = all_insights[-min(10, len(all_insights)//2):]
+            
+            early_complexity = np.mean([i.get('complexity', 1) for i in early_insights])
+            late_complexity = np.mean([i.get('complexity', 1) for i in late_insights])
             learning_trend = late_complexity - early_complexity
         else:
-            learning_trend = 0
+            learning_trend = 0.0
         
         return {
-            'avg_complexity': avg_complexity,
-            'insight_rate': insight_rate,
-            'domain_variety': domain_variety,
-            'learning_trend': learning_trend
+            'avg_complexity': float(avg_complexity),
+            'insight_rate': float(insight_rate),
+            'domain_variety': float(domain_variety),
+            'learning_trend': float(learning_trend)
         }
         
     def measure_performance(self) -> Dict[str, float]:
@@ -193,7 +206,7 @@ class HolyGrailExperiments:
         return memory_mb < 6000
     
     def test_constant_time_scaling(self, entity_count: int = 256) -> Dict[str, Any]:
-        """Experiment 1: Attempt O(1) constant-time scaling"""
+        """Experiment 1: Attempt O(1) constant-time scaling - FIXED"""
         self.log(f"CONSTANT-TIME SCALING: Testing {entity_count} entities")
         
         class ConstantTimeEntity(PulseCoupledEntity):
@@ -211,6 +224,7 @@ class HolyGrailExperiments:
                     self.phase = (self.phase + self.base_frequency) % 1.0
             
             def generate_insight(self):
+                # Representatives generate complex insights
                 if self.is_representative:
                     insight = super().generate_insight()
                     if insight:
@@ -218,14 +232,18 @@ class HolyGrailExperiments:
                         insight['cluster_size'] = 32
                     return insight
                 else:
-                    if self.phase > 0.8:
+                    # Regular members generate simpler insights more frequently
+                    if self.phase > 0.7:  # Lower threshold for members
+                        self.insight_count += 1
                         return {
                             'entity': self.entity_id,
+                            'domain': self.domain,
                             'status': 'cluster_member',
                             'cluster': self.cluster_id,
                             'action': 'follow_representative',
                             'complexity': 1,
-                            'confidence': self.phase
+                            'confidence': self.phase,
+                            'insight_number': self.insight_count
                         }
                     return {}
         
@@ -246,7 +264,7 @@ class HolyGrailExperiments:
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         metrics = []
         
-        for cycle in range(30):
+        for cycle in range(50):  # Increased cycles for more insights
             if not self.memory_safety_check():
                 self.log("MEMORY LIMIT REACHED - stopping constant-time test")
                 break
@@ -292,14 +310,16 @@ class HolyGrailExperiments:
                 self.superposition_entropy = min(1.0, self.phase * 2)
                 
             def generate_insight(self):
-                collapse_threshold = 0.7
-                if self.phase >= collapse_threshold or np.random.random() < self.superposition_entropy:
+                # More frequent collapse for better insight generation
+                collapse_threshold = 0.6
+                if self.phase >= collapse_threshold:
                     self.collapsed_domain = np.random.choice(
                         self.domain_superposition, 
                         p=self.domain_weights
                     )
                 
-                if self.collapsed_domain and self.phase > 0.8:
+                # Generate insights in collapsed state
+                if self.collapsed_domain and self.phase > 0.75:
                     original_domain = self.domain
                     self.domain = self.collapsed_domain
                     insight = super().generate_insight()
@@ -311,8 +331,8 @@ class HolyGrailExperiments:
                         insight['superposition_entropy'] = self.superposition_entropy
                         return insight
                 
-                # FIX: Always return proper insight structure with complexity
-                if self.phase > 0.5:
+                # Also generate insights in superposition state
+                if self.phase > 0.7:
                     self.insight_count += 1
                     return {
                         'entity': self.entity_id,
@@ -347,7 +367,7 @@ class HolyGrailExperiments:
         metrics = []
         superposition_stats = []
         
-        for cycle in range(40):
+        for cycle in range(60):  # Increased cycles
             if not self.memory_safety_check():
                 self.log("MEMORY LIMIT REACHED - stopping quantum test")
                 break
@@ -409,24 +429,19 @@ class HolyGrailExperiments:
                 all_states = np.array([e.state_vector for e in self.entities])
                 compressed_size = max(1, int(len(self.entities) * self.compression_ratio))
                 
-                # FIX: Create proper compression and expansion matrices
                 self.compression_matrix = np.random.randn(all_states.shape[1], compressed_size) * 0.1
                 self.expansion_matrix = np.random.randn(compressed_size, all_states.shape[1]) * 0.1
                 
-                # Compress: project to lower dimension
                 self.compressed_representation = all_states @ self.compression_matrix
                 
             def expand_compressed_representation(self):
                 if self.compressed_representation is None or self.expansion_matrix is None:
                     return np.array([e.state_vector for e in self.entities])
                 
-                # FIX: Properly expand from compressed representation
-                # Expand back to full dimension
                 expanded_base = self.compressed_representation @ self.expansion_matrix
                 
-                # Blend with actual states for stability
                 actual_states = np.array([e.state_vector for e in self.entities])
-                blend_ratio = 0.3  # 30% compressed, 70% actual
+                blend_ratio = 0.3
                 
                 result = blend_ratio * expanded_base + (1 - blend_ratio) * actual_states
                 
@@ -449,7 +464,7 @@ class HolyGrailExperiments:
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         metrics = []
         
-        for cycle in range(25):
+        for cycle in range(40):  # Increased cycles
             if not self.memory_safety_check():
                 self.log("MEMORY LIMIT REACHED - stopping holographic test")
                 break
@@ -540,7 +555,7 @@ def main():
     print("=" * 60)
     print("⚠️  WARNING: Experimental - may exceed GitHub memory limits")
     print("🎯 TRACKING: Memory scaling + Intelligence metrics")
-    print("🔧 FIXED: Critical bugs in quantum and holographic experiments")
+    print("🔧 FIXED: Zero metrics and critical bugs")
     print("=" * 60)
     
     experimenter = HolyGrailExperiments()
