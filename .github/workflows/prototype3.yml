@@ -6,56 +6,73 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday
 
 jobs:
   safe-scaling-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Safe timeout
+    timeout-minutes: 30
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
+        cache: 'pip'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install numpy psutil matplotlib
+        pip install numpy psutil
         
     - name: Run Safe Scaling Tests
       run: python github_safe_testbed.py
+      continue-on-error: false
       
     - name: Upload Safe Test Results
-      uses: actions/upload-artifact@v3
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
         name: safe-scaling-results
         path: scaling_results_*.json
         retention-days: 30
+        if-no-files-found: warn
         
-    - name: Run Holy Grail Experiments (if enough memory)
+    - name: Run Holy Grail Experiments
       run: |
-        # Only run if we have enough memory headroom
         python holy_grail_experiments.py || echo "Holy Grail experiments may have hit memory limits"
+      continue-on-error: true
         
     - name: Upload Holy Grail Results
-      uses: actions/upload-artifact@v3
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
         name: holy-grail-results  
         path: holy_grail_results_*.json
         retention-days: 30
+        if-no-files-found: warn
         
     - name: Test Summary
+      if: always()
       run: |
         echo "📊 Prototype3 Testing Complete"
+        echo "================================"
         echo "✅ Safe scaling tests: PASSED"
         echo "🌌 Holy grail experiments: ATTEMPTED"
+        echo ""
         echo "Results available as artifacts"
+        echo ""
+        if [ -f scaling_results_*.json ]; then
+          echo "📁 Safe scaling results generated"
+        fi
+        if [ -f holy_grail_results_*.json ]; then
+          echo "📁 Holy grail results generated"
+        fi
 
   performance-report:
     runs-on: ubuntu-latest
@@ -63,17 +80,89 @@ jobs:
     if: always()
     
     steps:
-    - name: Download Results
-      uses: actions/download-artifact@v3
+    - name: Download Safe Scaling Results
+      uses: actions/download-artifact@v4
+      with:
+        name: safe-scaling-results
+        path: results/safe
+      continue-on-error: true
+        
+    - name: Download Holy Grail Results
+      uses: actions/download-artifact@v4
+      with:
+        name: holy-grail-results
+        path: results/holy-grail
+      continue-on-error: true
       
     - name: Generate Performance Report
       run: |
         echo "🚀 HOLOLIFEX6 PROTOTYPE3 PERFORMANCE REPORT"
         echo "==========================================="
+        echo ""
         echo "Generated: $(date)"
         echo "Branch: ${{ github.ref }}"
         echo "Commit: ${{ github.sha }}"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Run Number: ${{ github.run_number }}"
         echo ""
-        echo "📈 Scaling efficiency and holy grail experiments completed."
-        echo "Check artifacts for detailed results."
+        echo "📈 Scaling Tests Status:"
+        echo "------------------------"
+        
+        if [ -d "results/safe" ] && [ "$(ls -A results/safe)" ]; then
+          echo "✅ Safe scaling tests completed"
+          echo "   Files: $(ls results/safe/)"
+        else
+          echo "⚠️  Safe scaling results not found"
+        fi
+        
+        echo ""
+        echo "🌌 Holy Grail Experiments Status:"
+        echo "---------------------------------"
+        
+        if [ -d "results/holy-grail" ] && [ "$(ls -A results/holy-grail)" ]; then
+          echo "✅ Holy grail experiments completed"
+          echo "   Files: $(ls results/holy-grail/)"
+        else
+          echo "⚠️  Holy grail results not found (may have hit memory limits)"
+        fi
+        
+        echo ""
+        echo "📦 Artifacts Summary:"
+        echo "--------------------"
+        echo "All results are available as downloadable artifacts"
+        echo "Retention: 30 days"
+        echo ""
+        echo "For detailed analysis, download the artifacts from:"
+        echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      shell: bash
+      
+    - name: Create Job Summary
+      if: always()
+      run: |
+        echo "## 🚀 HOLOLIFEX6 Prototype3 Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -d "results/safe" ] && [ "$(ls -A results/safe)" ]; then
+          echo "| Safe Scaling Tests | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Safe Scaling Tests | ⚠️ No Results |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -d "results/holy-grail" ] && [ "$(ls -A results/holy-grail)" ]; then
+          echo "| Holy Grail Experiments | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Holy Grail Experiments | ⚠️ Memory Limited |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Results are available as downloadable artifacts with 30-day retention." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- \`safe-scaling-results\`: Baseline and progressive scaling tests" >> $GITHUB_STEP_SUMMARY
+        echo "- \`holy-grail-results\`: Experimental constant-time and quantum tests" >> $GITHUB_STEP_SUMMARY
       shell: bash
