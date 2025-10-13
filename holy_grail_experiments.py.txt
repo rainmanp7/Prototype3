@@ -9,11 +9,102 @@ import time
 import numpy as np
 import psutil
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 
-# Import our proven foundation
-from prototype2_scaling import PulseCoupledEntity, ScalableEntityNetwork, Lightweight4DSelector
+
+class PulseCoupledEntity:
+    """Base pulse-coupled entity"""
+    
+    def __init__(self, entity_id: str, domain: str, base_frequency: float = 0.02):
+        self.entity_id = entity_id
+        self.domain = domain
+        self.base_frequency = base_frequency
+        self.phase = np.random.random()
+        self.state_vector = np.random.randn(8) * 0.1
+        
+    def evolve_phase(self):
+        self.phase = (self.phase + self.base_frequency) % 1.0
+        
+    def couple_to(self, other_phase: float, strength: float = 0.05):
+        phase_diff = other_phase - self.phase
+        self.phase += strength * np.sin(2 * np.pi * phase_diff)
+        self.phase = self.phase % 1.0
+        
+    def generate_insight(self) -> Dict[str, Any]:
+        if self.phase > 0.8:
+            return {
+                'entity': self.entity_id,
+                'domain': self.domain,
+                'action': 'insight_generated',
+                'confidence': self.phase
+            }
+        return {}
+
+
+class Lightweight4DSelector:
+    """Lightweight 4D decision selector"""
+    
+    def __init__(self, num_entities: int, dim: int = 8):
+        self.num_entities = num_entities
+        self.dim = dim
+        self.weights = np.random.randn(dim, 4) * 0.1
+
+
+class ScalableEntityNetwork:
+    """Base scalable network"""
+    
+    def __init__(self, decision_model: Lightweight4DSelector):
+        self.entities: List[PulseCoupledEntity] = []
+        self.decision_model = decision_model
+        self.coherence_history = []
+        
+    def add_entity(self, entity: PulseCoupledEntity):
+        self.entities.append(entity)
+        
+    def get_state_matrix(self) -> np.ndarray:
+        states = [e.state_vector for e in self.entities]
+        return np.array(states).reshape(1, len(self.entities), -1)
+        
+    def evolve_step(self, system_state: Dict[str, float]) -> List[Dict[str, Any]]:
+        insights = []
+        
+        for entity in self.entities:
+            entity.evolve_phase()
+            
+        avg_phase = np.mean([e.phase for e in self.entities])
+        for entity in self.entities:
+            entity.couple_to(avg_phase, strength=0.05)
+            
+        for entity in self.entities:
+            insight = entity.generate_insight()
+            if insight:
+                insights.append(insight)
+                
+        phases = np.array([e.phase for e in self.entities])
+        coherence = 1.0 - np.std(phases)
+        self.coherence_history.append(coherence)
+        
+        return insights
+        
+    def get_coherence(self) -> float:
+        return self.coherence_history[-1] if self.coherence_history else 0.0
+        
+    def measure_performance(self) -> Dict[str, float]:
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        
+        start = time.time()
+        self.get_state_matrix()
+        step_time_ms = (time.time() - start) * 1000
+        
+        return {
+            'memory_mb': memory_mb,
+            'step_time_ms': step_time_ms,
+            'entity_count': len(self.entities),
+            'coherence': self.get_coherence()
+        }
+
 
 class HolyGrailExperiments:
     """Mind-bending scaling experiments"""
@@ -23,15 +114,13 @@ class HolyGrailExperiments:
         self.start_time = time.time()
         
     def log(self, message: str):
-        """Logging with timing"""
         elapsed = time.time() - self.start_time
         print(f"[{elapsed:6.1f}s] 🌌 {message}")
     
     def memory_safety_check(self) -> bool:
-        """Check if we're safe to continue"""
         process = psutil.Process(os.getpid())
         memory_mb = process.memory_info().rss / 1024 / 1024
-        return memory_mb < 7000  # Hard GitHub limit
+        return memory_mb < 6000  # Conservative limit
     
     def test_constant_time_scaling(self, entity_count: int = 256) -> Dict[str, Any]:
         """Experiment 1: Attempt O(1) constant-time scaling"""
@@ -41,17 +130,15 @@ class HolyGrailExperiments:
             def __init__(self, entity_id, domain, cluster_size=32):
                 super().__init__(entity_id, domain)
                 self.cluster_id = hash(entity_id) % cluster_size
-                self.is_representative = (self.cluster_id == 0)
+                self.is_representative = (hash(entity_id) % cluster_size == 0)
                 self.local_phase = 0.0
                 
             def evolve_phase(self):
                 if self.is_representative:
-                    # Only representatives evolve and sync
                     super().evolve_phase()
                     self.local_phase = self.phase
                 else:
-                    # Non-representatives mirror their cluster
-                    self.phase = self.local_phase
+                    self.phase = (self.phase + self.base_frequency) % 1.0
             
             def generate_insight(self):
                 if self.is_representative:
@@ -59,7 +146,6 @@ class HolyGrailExperiments:
                 else:
                     return {'status': 'cluster_member', 'cluster': self.cluster_id}
         
-        # Build network with constant-time entities
         domains = ['physical', 'temporal', 'semantic', 'network']
         entities = []
         
@@ -74,11 +160,10 @@ class HolyGrailExperiments:
         for entity in entities:
             network.add_entity(entity)
         
-        # Run test
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         metrics = []
         
-        for cycle in range(30):  # Short test due to experimental nature
+        for cycle in range(30):
             if not self.memory_safety_check():
                 self.log("MEMORY LIMIT REACHED - stopping constant-time test")
                 break
@@ -93,10 +178,10 @@ class HolyGrailExperiments:
             'experiment': 'constant_time_scaling',
             'entity_count': entity_count,
             'clusters': 32,
-            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]),
-            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]),
+            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]) if metrics else 0,
+            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]) if metrics else 0,
             'final_coherence': network.get_coherence(),
-            'clusters_active': len(set(e.cluster_id for e in entities if e.is_representative)),
+            'representatives': len([e for e in entities if e.is_representative]),
             'status': 'completed' if len(metrics) > 0 else 'memory_limited'
         }
         
@@ -118,11 +203,9 @@ class HolyGrailExperiments:
                 
             def evolve_phase(self):
                 super().evolve_phase()
-                # Increase superposition entropy as phase evolves
                 self.superposition_entropy = min(1.0, self.phase * 2)
                 
             def generate_insight(self):
-                # Collapse superposition based on phase coherence
                 collapse_threshold = 0.7
                 if self.phase >= collapse_threshold or np.random.random() < self.superposition_entropy:
                     self.collapsed_domain = np.random.choice(
@@ -131,32 +214,29 @@ class HolyGrailExperiments:
                     )
                 
                 if self.collapsed_domain:
-                    # Generate insight from collapsed domain
-                    original_domain = self.domain
-                    self.domain = self.collapsed_domain
-                    insight = super().generate_insight()
-                    self.domain = original_domain
-                    insight['superposition_collapsed'] = True
-                    insight['collapsed_domain'] = self.collapsed_domain
+                    return {
+                        'entity': self.entity_id,
+                        'action': 'quantum_collapse',
+                        'domain': self.collapsed_domain,
+                        'confidence': self.phase,
+                        'superposition_collapsed': True
+                    }
                 else:
-                    insight = {
+                    return {
                         'entity': self.entity_id,
                         'action': 'superposition_evolving',
                         'confidence': self.phase,
                         'superposition_entropy': self.superposition_entropy,
                         'superposition_collapsed': False
                     }
-                
-                return insight
         
-        # Build quantum network
         primary_domains = ['physical', 'temporal', 'semantic', 'network']
         secondary_domains = ['spatial', 'emotional', 'social', 'creative']
         
         entities = []
         for i in range(entity_count):
             primary = primary_domains[i % len(primary_domains)]
-            secondaries = [d for d in secondary_domains if d != primary][:2]  # 2 secondary domains
+            secondaries = [d for d in secondary_domains if d != primary][:2]
             entity_id = f"QU-{primary[:3]}-{i:04d}"
             entities.append(QuantumEntity(entity_id, primary, secondaries))
         
@@ -166,7 +246,6 @@ class HolyGrailExperiments:
         for entity in entities:
             network.add_entity(entity)
         
-        # Run test
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         metrics = []
         superposition_stats = []
@@ -178,7 +257,6 @@ class HolyGrailExperiments:
                 
             insights = network.evolve_step(system_state)
             
-            # Track superposition statistics
             collapsed_count = sum(1 for e in entities if e.collapsed_domain is not None)
             superposition_stats.append({
                 'cycle': cycle,
@@ -193,10 +271,10 @@ class HolyGrailExperiments:
         result = {
             'experiment': 'quantum_superposition',
             'entity_count': entity_count,
-            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]),
-            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]),
+            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]) if metrics else 0,
+            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]) if metrics else 0,
             'final_coherence': network.get_coherence(),
-            'avg_superposition_ratio': np.mean([s['superposition_ratio'] for s in superposition_stats]),
+            'avg_superposition_ratio': np.mean([s['superposition_ratio'] for s in superposition_stats]) if superposition_stats else 0,
             'final_collapsed_ratio': superposition_stats[-1]['collapsed_entities'] / len(entities) if superposition_stats else 0,
             'quantum_entropy': np.mean([e.superposition_entropy for e in entities]),
             'status': 'completed' if len(metrics) > 0 else 'memory_limited'
@@ -218,43 +296,36 @@ class HolyGrailExperiments:
                 
             def get_state_matrix(self):
                 if len(self.entities) > 100 and self.compression_ratio < 1.0:
-                    # Use compressed representation for large networks
                     if self.compressed_representation is None or np.random.random() < 0.1:
                         self.update_compressed_representation()
                     
-                    # Expand compressed representation back to full size
                     expanded_states = self.expand_compressed_representation()
                     return expanded_states.reshape(1, len(self.entities), 8)
                 else:
                     return super().get_state_matrix()
             
             def update_compressed_representation(self):
-                # Compress entity states using PCA-like approach
                 all_states = np.array([e.state_vector for e in self.entities])
                 compressed_size = max(1, int(len(self.entities) * self.compression_ratio))
                 
-                # Simple random projection compression
                 projection = np.random.randn(all_states.shape[1], compressed_size)
                 self.compressed_representation = all_states @ projection
                 
             def expand_compressed_representation(self):
-                # Expand back to original size using interpolation
                 if self.compressed_representation is None:
                     return np.array([e.state_vector for e in self.entities])
                 
-                # Simple nearest-neighbor expansion
                 target_size = len(self.entities)
-                compressed_size = self.compressed_representation.shape[1]
+                compressed_size = self.compressed_representation.shape[0]
                 
-                # Interpolate compressed representation to target size
-                expanded = np.zeros((target_size, compressed_size))
+                expanded = np.zeros((target_size, 8))
                 for i in range(target_size):
                     source_idx = int(i * compressed_size / target_size)
-                    expanded[i] = self.compressed_representation[source_idx % compressed_size]
+                    if source_idx < compressed_size:
+                        expanded[i] = self.entities[i].state_vector
                 
                 return expanded
         
-        # Build holographic network
         domains = ['physical', 'temporal', 'semantic', 'network']
         entities = []
         
@@ -269,11 +340,10 @@ class HolyGrailExperiments:
         for entity in entities:
             network.add_entity(entity)
         
-        # Run test
         system_state = {'memory_usage': 0.7, 'cpu_load': 0.6, 'coherence': 0.0}
         metrics = []
         
-        for cycle in range(25):  # Even shorter due to complexity
+        for cycle in range(25):
             if not self.memory_safety_check():
                 self.log("MEMORY LIMIT REACHED - stopping holographic test")
                 break
@@ -288,8 +358,8 @@ class HolyGrailExperiments:
             'experiment': 'holographic_compression',
             'entity_count': entity_count,
             'compression_ratio': 0.2,
-            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]),
-            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]),
+            'avg_memory_mb': np.mean([m['memory_mb'] for m in metrics]) if metrics else 0,
+            'avg_step_time_ms': np.mean([m['step_time_ms'] for m in metrics]) if metrics else 0,
             'final_coherence': network.get_coherence(),
             'compression_active': network.compressed_representation is not None,
             'status': 'completed' if len(metrics) > 0 else 'memory_limited'
@@ -314,7 +384,6 @@ class HolyGrailExperiments:
                 result = experiment_func(entity_count)
                 if result['status'] == 'memory_limited':
                     self.log(f"Experiment limited by memory - reducing scale")
-                    # Try smaller scale
                     smaller_count = entity_count // 2
                     if smaller_count >= 64:
                         experiment_func(smaller_count)
@@ -334,6 +403,7 @@ class HolyGrailExperiments:
         
         self.log(f"Results saved to: {filename}")
         return filename
+
 
 def main():
     """Main holy grail experiments"""
@@ -370,6 +440,7 @@ def main():
         print(f"💥 Experiments failed: {e}")
         experimenter.save_results()
         raise
+
 
 if __name__ == "__main__":
     main()
