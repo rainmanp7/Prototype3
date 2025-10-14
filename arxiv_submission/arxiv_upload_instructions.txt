@@ -1,0 +1,14 @@
+ARXIV SUBMISSION CHECKLIST:
+
+1. Go to: https://arxiv.org/submit
+2. Login or create account (use same email as ORCID)
+3. Choose category: cs.AI (Artificial Intelligence)
+4. Upload these files:
+   - main.tex
+   - references.bib
+5. Fill metadata:
+   - Title: "Efficient Synchronization in Pulse-Coupled Entity Networks"
+   - Authors: Christopher Brown
+   - Abstract: [Copy from main.tex]
+   - Comments: "Work archived at Zenodo: 10.5281/zenodo.17345334"
+6. Submit and wait for approval (1-2 days)
