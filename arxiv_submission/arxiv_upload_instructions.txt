@@ -9,6 +9,6 @@ ARXIV SUBMISSION CHECKLIST:
 5. Fill metadata:
    - Title: "Efficient Synchronization in Pulse-Coupled Entity Networks"
    - Authors: Christopher Brown
-   - Abstract: [Copy from main.tex]
+   - Abstract: We examine synchronization dynamics in networks of pulse-coupled computational entities and observe interesting scaling patterns. Our experiments show memory usage growing sub-linearly with entity count, with 1024 entities operating within 35.8MB of memory. We explore three architectural variations—cluster-based synchronization, domain-flexible entities, and compressed state representation—that maintain synchronization while demonstrating computational efficiency. These empirical observations may inform future work on distributed AI systems.
    - Comments: "Work archived at Zenodo: 10.5281/zenodo.17345334"
 6. Submit and wait for approval (1-2 days)
