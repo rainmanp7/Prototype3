@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "HOLOLIFEX6 PROTOTYPE3: Efficient Synchronization in Pulse-Coupled Entity Networks"
+authors:
+  - family-names: Brown
+    given-names: Christopher
+    orcid: https://orcid.org/0009-0008-4741-3108
+version: 1.0
+doi: 10.5281/zenodo.17345334
+date-released: 2025-10-14
+url: https://github.com/rainmanp7/hololifex6-prototype3
+license: Apache-2.0
