@@ -1,6 +1,7 @@
 # HOLOLIFEX6 PROTOTYPE3
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17345334.svg)](https://doi.org/10.5281/zenodo.17345334)
 
+https://orcid.org/0009-0008-4741-3108
 *A research framework for efficient synchronization in pulse-coupled entity networks*
 
 ## 🚀 Quick Start
