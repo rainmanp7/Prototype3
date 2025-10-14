@@ -73,6 +73,10 @@ Exploring sub-linear memory scaling and synchronization dynamics in computationa
 
 Apache 2.0 - See LICENSE file
 
+## 📚 Citation
+If you use this work, please cite:
+**Brown, Christopher.** (2025). HOLOLIFEX6 PROTOTYPE3: Efficient Synchronization in Pulse-Coupled Entity Networks (Version 1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17345334
+
 ## 🤝 Collaboration
 
 We welcome research collaboration on:
